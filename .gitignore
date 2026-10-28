@@ -1,0 +1,14 @@
+/out/
+app/.gradle/
+app/build/
+app/app/build/
+app/local.properties
+survey-*/
+__pycache__/
+/docs/notes/
+*.pyc
+*.swp
+.DS_Store
+.idea/
+app/.cxx/
+app/app/.cxx/

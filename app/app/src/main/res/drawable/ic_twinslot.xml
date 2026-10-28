@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick Settings glyph: the launcher icon's split phone, top half solid, bottom half outlined. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group android:translateX="-0.55" android:translateY="-0.65">
+        <clip-path android:pathData="M0,0H24V1.71L0,22.29Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M9,2h6a2.5,2.5 0 0 1 2.5,2.5v15a2.5,2.5 0 0 1 -2.5,2.5h-6a2.5,2.5 0 0 1 -2.5,-2.5v-15a2.5,2.5 0 0 1 2.5,-2.5z" />
+    </group>
+    <group android:translateX="0.55" android:translateY="0.65">
+        <clip-path android:pathData="M24,1.71V24H0V22.29Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M9,2h6a2.5,2.5 0 0 1 2.5,2.5v15a2.5,2.5 0 0 1 -2.5,2.5h-6a2.5,2.5 0 0 1 -2.5,-2.5v-15a2.5,2.5 0 0 1 2.5,-2.5zM9.3,4h5.4a0.8,0.8 0 0 1 0.8,0.8v14.4a0.8,0.8 0 0 1 -0.8,0.8h-5.4a0.8,0.8 0 0 1 -0.8,-0.8v-14.4a0.8,0.8 0 0 1 0.8,-0.8z" />
+    </group>
+</vector>

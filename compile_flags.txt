@@ -1,0 +1,11 @@
+-xc
+-std=gnu11
+-Wall
+-Wextra
+-D_GNU_SOURCE
+-DXZ_USE_CRC64
+-Isrc
+-Ithird_party/lz4
+-Ithird_party/zstd
+-Ithird_party/bzip2
+-Ithird_party/xz

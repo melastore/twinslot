@@ -1,0 +1,125 @@
+#!/sbin/sh
+# TwinSlot recovery zip: runs one twinslot command from recovery.
+#
+# The zip carries the twinslot binary and a `command` file with the
+# arguments, shell-quoted (e.g. "switch other", or
+# "install '/sdcard/TwinSlot/rom.zip' --wipe"). Its progress lines drive the
+# recovery's progress bar; everything it prints is shown on screen.
+
+OUTFD=$2
+ZIP=$3
+
+ui_print() {
+	echo "ui_print $1" >> "/proc/self/fd/$OUTFD"
+	echo "ui_print" >> "/proc/self/fd/$OUTFD"
+}
+
+set_progress() {
+	echo "set_progress $1" >> "/proc/self/fd/$OUTFD"
+}
+
+# A private directory: a shared /tmp on this recovery has poisoned flashes before.
+WORK=/tmp/twinslot.$$
+rm -rf "$WORK"
+mkdir -p "$WORK"
+
+if ! unzip -oq "$ZIP" twinslot command -d "$WORK"; then
+	ui_print "TwinSlot: cannot unpack the zip"
+	rm -rf "$WORK"
+	exit 1
+fi
+chmod 0755 "$WORK/twinslot"
+# Zips made by the app carry the partition table as it was when they were made (table.bin). The
+# zip itself stays on the computer or card it is flashed from, so that copy outlives a power cut.
+unzip -oq "$ZIP" table.bin -d "$WORK" 2> /dev/null || rm -f "$WORK/table.bin"
+
+# A zip on an SD card or USB stick also gets a copy of the partition table next to it, off the
+# disk it changes. Sideloaded zips (/sideload) and internal storage (on that disk) do not.
+TABLE_DIR=
+case "$ZIP" in
+/sideload/* | /tmp/* | /sdcard/* | /data/* | /storage/emulated/*) ;;
+*)
+	d=${ZIP%/*}
+	[ -n "$d" ] && [ -d "$d" ] && [ -w "$d" ] && TABLE_DIR=$d
+	;;
+esac
+# One twinslot command per line of `command`; the first failure stops the rest.
+run() {
+	ui_print "TwinSlot: twinslot $*"
+	CMD=$1
+	case "$1" in
+	setup | remove)
+		# Repartitioning needs Data and Metadata unmounted. Flash these zips by
+		# ADB sideload or from a USB stick / SD card, not from internal storage.
+		for m in /sdcard /data/media /data /metadata; do
+			umount "$m" 2> /dev/null
+		done
+		;;
+	esac
+
+	case "$1" in
+	setup | remove)
+		[ -s "$WORK/table.bin" ] && set -- --kept-copy "$WORK/table.bin" "$@"
+		# An earlier setup/remove of this zip changed the table: table.bin is from before it.
+		[ -s "$WORK/table.bin" ] && [ -n "$CHANGED" ] && set -- --kept-copy-earlier "$@"
+		[ -n "$TABLE_DIR" ] && set -- --table-dir "$TABLE_DIR" "$@"
+		;;
+	esac
+
+	# The pipeline loses the exit code in sh: it goes through a file.
+	rm -f "$WORK/rc"
+	{
+		"$WORK/twinslot" "$@" < /dev/null 2>&1
+		echo "exit $?"
+	} | while IFS= read -r line; do
+		case "$line" in
+		"progress "*)
+			# "progress PERMILLE step text": only the number, and only if it is one.
+			p=${line#progress }
+			p=${p%% *}
+			case "$p" in
+			'' | *[!0-9]*) ;;
+			*) set_progress "$((p / 1000)).$(printf %03d $((p % 1000)))" ;;
+			esac
+			;;
+		"exit "*)
+			echo "${line#exit }" > "$WORK/rc"
+			;;
+		"table_copy="*)
+			ui_print "  partition table saved: ${line#table_copy=}"
+			echo "${line#table_copy=}" >> "$WORK/copies"
+			;;
+		*)
+			ui_print "  ${line#twinslot: }"
+			;;
+		esac
+	done
+	RC=$(cat "$WORK/rc" 2> /dev/null || echo 1)
+	case "$CMD" in
+	setup | remove) [ "$RC" = 0 ] && CHANGED=1 ;;
+	esac
+}
+
+RC=0
+CHANGED=
+while IFS= read -r COMMAND || [ -n "$COMMAND" ]; do
+	[ -n "$COMMAND" ] || continue
+	eval "set -- $COMMAND"
+	run "$@"
+	[ "$RC" = 0 ] || break
+done < "$WORK/command"
+
+if [ "$RC" != 0 ]; then
+	ui_print "TwinSlot: failed (exit $RC); read the lines above"
+	if [ -s "$WORK/copies" ]; then
+		ui_print "The partition table from before is saved in:"
+		while IFS= read -r c; do ui_print "  $c"; done < "$WORK/copies"
+		[ -s "$WORK/table.bin" ] && ui_print "  table.bin inside this zip"
+		ui_print "Keep a copy before rebooting (adb pull it, or copy it to a card)."
+	fi
+	rm -rf "$WORK"
+	exit 1
+fi
+rm -rf "$WORK"
+ui_print "TwinSlot: done"
+exit 0

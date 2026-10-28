@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TwinSlot</string>
+    <string name="tile_label">Other Android</string>
+    <string name="tile_open_app">Open TwinSlot first</string>
+</resources>
